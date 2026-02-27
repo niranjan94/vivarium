@@ -29,14 +29,14 @@ export function readState(projectName: string): VivariumState | null {
   return JSON.parse(fs.readFileSync(statePath, 'utf-8'));
 }
 
-/** Write state.json for a project, creating the directory if needed. */
+/** Write state.json for a project, creating the directory if needed. Uses atomic rename. */
 export function writeState(state: VivariumState) {
   const dir = projectDir(state.projectName);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(
-    path.join(dir, 'state.json'),
-    JSON.stringify(state, null, 2),
-  );
+  const finalPath = path.join(dir, 'state.json');
+  const tmpPath = `${finalPath}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2));
+  fs.renameSync(tmpPath, finalPath);
 }
 
 /** Remove a project's entire registry directory. */
@@ -118,10 +118,9 @@ export function autoAssignIndex(projectName: string): number {
       continue;
     }
 
-    if (isPortInUse(ports.postgres)) {
-      log.dim(
-        `Index ${i} has no claim but postgres port ${ports.postgres} is in use, skipping`,
-      );
+    const busyPort = Object.values(ports).find(isPortInUse);
+    if (busyPort) {
+      log.dim(`Index ${i} skipped — port ${busyPort} is already in use`);
       continue;
     }
 
