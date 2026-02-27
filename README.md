@@ -26,9 +26,9 @@ If these opinions don't align with your workflow, this may not be the right tool
 ## Installation
 
 ```bash
-npm install -g vivarium
+npm install -g vivarium-cli
 # or as a devDependency
-npm install --save-dev vivarium
+npm install --save-dev vivarium-cli
 ```
 
 ## Quick Start
