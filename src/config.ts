@@ -60,12 +60,11 @@ export function loadConfig(projectRoot: string): VivariumConfig {
   process.exit(1);
 }
 
-/** Read the project name from the root package.json. */
+/** Read the project name from the root package.json, falling back to directory name. */
 export function loadProjectName(projectRoot: string): string {
   const packageJsonPath = path.join(projectRoot, 'package.json');
   if (!fs.existsSync(packageJsonPath)) {
-    log.error('No package.json found at project root.');
-    process.exit(1);
+    return path.basename(projectRoot);
   }
   const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
   return pkg.name ?? path.basename(projectRoot);

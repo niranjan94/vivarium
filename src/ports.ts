@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 
 /** Computed port assignments for a given index. */
@@ -31,14 +31,14 @@ export function isPortInUse(port: number): boolean {
   try {
     const platform = os.platform();
     if (platform === 'darwin') {
-      const result = execSync(`lsof -iTCP:${port} -sTCP:LISTEN`, {
+      const result = execFileSync('lsof', [`-iTCP:${port}`, '-sTCP:LISTEN'], {
         stdio: 'pipe',
         encoding: 'utf-8',
       });
       return result.trim().length > 0;
     }
     // Linux / WSL
-    const result = execSync(`ss -tlnH sport = :${port}`, {
+    const result = execFileSync('ss', ['-tlnH', 'sport', '=', `:${port}`], {
       stdio: 'pipe',
       encoding: 'utf-8',
     });

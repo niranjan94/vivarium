@@ -123,7 +123,7 @@ function generateFrontendEnv(
   }
 
   if (services.s3) {
-    vars.NEXT_PUBLIC_ASSET_SRC = `https://localhost:${ports.s3}`;
+    vars.NEXT_PUBLIC_ASSET_SRC = `http://localhost:${ports.s3}`;
   }
 }
 

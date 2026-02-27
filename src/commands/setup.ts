@@ -143,7 +143,7 @@ function updateLaunchJson(
           ...config.env,
           NEXT_PUBLIC_API_URL: `http://127.0.0.1:${ports.backend}`,
           NEXT_PUBLIC_FRONTEND_URL: `http://127.0.0.1:${ports.frontend}`,
-          NEXT_PUBLIC_ASSET_SRC: `https://127.0.0.1:${ports.s3}`,
+          NEXT_PUBLIC_ASSET_SRC: `http://127.0.0.1:${ports.s3}`,
         };
       } else if (config.name === 'api') {
         config.port = ports.backend;
