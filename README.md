@@ -76,7 +76,7 @@ vivarium setup
 | `vivarium start`    | Start compose services (no setup logic)                            |
 | `vivarium stop`     | Stop compose services (no teardown logic)                          |
 | `vivarium compose`  | Pass-through to `docker compose` with generated config             |
-| `vivarium mcp-proxy`| stdio-to-SSE bridge for MCP (used by Claude Code `.mcp.json`)     |
+| `vivarium mcp-proxy <service>` | stdio→SSE bridge for an MCP service (e.g. `postgres-mcp`) |
 
 ## Port Allocation
 
@@ -88,7 +88,6 @@ Given an index `i` (0–99), ports are computed deterministically:
 | Redis          | `6380 + i`            | 6380    | 6381    |
 | S3 API         | `9010 + (i * 10)`     | 9010    | 9020    |
 | S3 Console     | `9011 + (i * 10)`     | 9011    | 9021    |
-| MCP            | `5600 + i`            | 5600    | 5601    |
 | Frontend       | `4000 + (i * 10)`     | 4000    | 4010    |
 | Backend        | `4001 + (i * 10)`     | 4001    | 4011    |
 

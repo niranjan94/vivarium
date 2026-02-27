@@ -7,7 +7,6 @@ export interface PortMap {
   redis: number;
   s3: number;
   s3Console: number;
-  mcp: number;
   frontend: number;
   backend: number;
 }
@@ -19,7 +18,6 @@ export function computePorts(index: number): PortMap {
     redis: 6380 + index,
     s3: 9010 + index * 10,
     s3Console: 9011 + index * 10,
-    mcp: 5600 + index,
     frontend: 4000 + index * 10,
     backend: 4001 + index * 10,
   };

@@ -6,9 +6,9 @@ import { log } from '../utils/logger.js';
 /**
  * Spawn the MCP stdio-to-SSE proxy.
  * Reads state from the registry, computes the Docker network,
- * and exec's into a docker run that bridges stdio to the postgres-mcp SSE endpoint.
+ * and exec's into a docker run that bridges stdio to the given service's SSE endpoint.
  */
-export function mcpProxy(projectRoot: string) {
+export function mcpProxy(projectRoot: string, service: string) {
   const projectName = loadProjectName(projectRoot);
   const state = readState(projectName);
 
@@ -28,7 +28,7 @@ export function mcpProxy(projectRoot: string) {
       '--network',
       network,
       'ghcr.io/sparfenyuk/mcp-proxy:v0.11.0',
-      'http://postgres-mcp:8000/sse',
+      `http://${service}:8000/sse`,
     ],
     { stdio: 'inherit' },
   );

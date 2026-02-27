@@ -27,7 +27,7 @@ src/
 │   ├── start.ts        # docker compose up (no setup logic)
 │   ├── stop.ts         # docker compose down (no teardown logic)
 │   ├── compose.ts      # Pass-through to docker compose
-│   └── mcp-proxy.ts    # stdio→SSE bridge for postgres-mcp
+│   └── mcp-proxy.ts    # stdio→SSE bridge for MCP services
 └── utils/
     ├── docker.ts       # docker/docker compose exec helpers
     ├── logger.ts       # ANSI color-coded logger
@@ -38,7 +38,7 @@ src/
 
 - **No YAML library.** Compose files are generated with template literals. Keep it that way.
 - **No tests.** The project has no test framework configured.
-- **Zero-config port allocation.** `ports.ts` computes all ports from a single index. MCP base is 5600 (moved from 5444 to avoid collisions beyond index 10).
+- **Zero-config port allocation.** `ports.ts` computes all ports from a single index. MCP sidecars are only accessed within the Docker network (no host-bound port).
 - **Registry = directories.** `~/.local/share/vivarium/<project>/` contains state.json, compose.yaml, .env. No files are written to the consuming project directory.
 - **Convention-based env generation.** Packages named `backend` and `frontend` get standard env vars automatically (`env.ts`). Custom `env` entries in config override conventions.
 

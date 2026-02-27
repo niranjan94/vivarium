@@ -59,10 +59,10 @@ program
   });
 
 program
-  .command('mcp-proxy')
-  .description('stdio→SSE bridge for MCP (used by .mcp.json)')
-  .action(() => {
-    mcpProxy(process.cwd());
+  .command('mcp-proxy <service>')
+  .description('stdio→SSE bridge for an MCP service (e.g. postgres-mcp)')
+  .action((service) => {
+    mcpProxy(process.cwd(), service);
   });
 
 program.parse();
