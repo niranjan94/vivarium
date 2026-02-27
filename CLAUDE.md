@@ -1,6 +1,6 @@
 # Vivarium
 
-Local dev stack manager CLI. Single runtime dependency (`commander`), ~500 lines of TypeScript.
+Local dev stack manager CLI. Two runtime dependencies (`commander`, `yaml`), ~500 lines of TypeScript.
 
 ## Commands
 
@@ -36,7 +36,7 @@ src/
 
 ## Key Design Decisions
 
-- **No YAML library.** Compose files are generated with template literals. Keep it that way.
+- **Structured YAML generation.** Compose files are built as plain objects and serialized via the `yaml` library.
 - **No tests.** The project has no test framework configured.
 - **Zero-config port allocation.** `ports.ts` computes all ports from a single index. MCP sidecars are only accessed within the Docker network (no host-bound port).
 - **Registry = directories.** `~/.local/share/vivarium/<project>/` contains state.json, compose.yaml, .env. No files are written to the consuming project directory.

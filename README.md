@@ -138,8 +138,7 @@ Vivarium is opinionated by design, but contributions are welcome. If you have id
 
 When contributing, keep in mind:
 
-- The tool should remain dependency-light at runtime (`commander` for CLI parsing is the sole dependency)
-- Generated output uses template literals, not YAML libraries
+- The tool should remain dependency-light at runtime (`commander` for CLI parsing and `yaml` for Compose file generation are the only dependencies)
 - Configuration validation is intentionally minimal -- trust the developer
 
 ## License
