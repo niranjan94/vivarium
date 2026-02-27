@@ -5,7 +5,28 @@
       "Bash(git commit:*)",
       "Bash(pnpm build:*)",
       "Bash(pnpm format:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(zip:*)",
+      "Bash(unzip:*)",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(tsx:*)",
+      "Bash(echo:*)",
+      "Bash(jq:*)",
+      "Bash(sort:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm:*)"
     ]
   }
 }
