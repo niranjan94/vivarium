@@ -57,7 +57,13 @@ export function generatePackageEnv(
   if (packageName === 'backend') {
     generateBackendEnv(vars, config.services, ports, allPackageNames);
   } else if (packageName === 'frontend') {
-    generateFrontendEnv(vars, config.services, ports, allPackageNames);
+    generateFrontendEnv(
+      vars,
+      config.services,
+      ports,
+      allPackageNames,
+      packageConfig.framework ?? 'nextjs',
+    );
   }
 
   // Custom env entries override convention defaults
@@ -114,16 +120,19 @@ function generateFrontendEnv(
   services: ServiceConfig,
   ports: PortMap,
   allPackageNames: string[],
+  framework: 'nextjs' | 'vite',
 ) {
+  const prefix = framework === 'vite' ? 'VITE_' : 'NEXT_PUBLIC_';
+
   vars.PORT = String(ports.frontend);
-  vars.NEXT_PUBLIC_FRONTEND_URL = `http://localhost:${ports.frontend}`;
+  vars[`${prefix}FRONTEND_URL`] = `http://localhost:${ports.frontend}`;
 
   if (allPackageNames.includes('backend')) {
-    vars.NEXT_PUBLIC_API_URL = `http://localhost:${ports.backend}`;
+    vars[`${prefix}API_URL`] = `http://localhost:${ports.backend}`;
   }
 
   if (services.s3) {
-    vars.NEXT_PUBLIC_ASSET_SRC = `http://localhost:${ports.s3}`;
+    vars[`${prefix}ASSET_SRC`] = `http://localhost:${ports.s3}`;
   }
 }
 

@@ -117,6 +117,8 @@ Each entry in `packages` can specify:
 - `envFile` -- path (relative to project root) where the generated `.env` will be written
 - `env` -- custom env vars merged on top of convention defaults
 - `postSetup` -- shell commands to run after services are ready (executed in the package directory)
+- `framework` -- `"nextjs"` (default) or `"vite"`. Controls the public env var prefix (`NEXT_PUBLIC_` vs `VITE_`) for frontend packages
+- `directory` -- directory path (relative to project root) for `postSetup` command execution. Defaults to the package key name
 
 ### Convention-Based Env Vars
 
@@ -124,7 +126,7 @@ For known package names, Vivarium generates standard env vars automatically. Cus
 
 **Backend** gets: `DATABASE_URL`, `REDIS_ENABLED`, `REDIS_URL`, `REDIS_QUEUE_URL`, `AWS_S3_*`, `API_LISTEN_PORT`, `API_URL`, `FRONTEND_URL` (when applicable).
 
-**Frontend** gets: `PORT`, `NEXT_PUBLIC_FRONTEND_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSET_SRC` (when applicable).
+**Frontend** gets: `PORT`, `{PREFIX}_FRONTEND_URL`, `{PREFIX}_API_URL`, `{PREFIX}_ASSET_SRC` (when applicable). The prefix is `NEXT_PUBLIC_` by default or `VITE_` when `"framework": "vite"` is set.
 
 ## Prerequisites
 

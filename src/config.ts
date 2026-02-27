@@ -25,6 +25,8 @@ export interface PackageConfig {
   envFile?: string;
   env?: Record<string, string>;
   postSetup?: string[];
+  framework?: 'nextjs' | 'vite';
+  directory?: string;
 }
 
 export interface VivariumConfig {

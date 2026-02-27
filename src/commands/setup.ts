@@ -99,12 +99,14 @@ export function setup(projectRoot: string) {
     log.info(`Running postSetup for ${pkgName}`);
     for (const cmd of pkgConfig.postSetup) {
       log.step(cmd);
-      execSync(cmd, { stdio: 'inherit', cwd: path.join(projectRoot, pkgName) });
+      const pkgDir = pkgConfig.directory ?? pkgName;
+      execSync(cmd, { stdio: 'inherit', cwd: path.join(projectRoot, pkgDir) });
     }
   }
 
   // Update .claude/launch.json
-  updateLaunchJson(projectRoot, ports);
+  const frontendFramework = config.packages.frontend?.framework ?? 'nextjs';
+  updateLaunchJson(projectRoot, ports, frontendFramework);
 
   // Print summary
   log.blank();
@@ -128,9 +130,12 @@ export function setup(projectRoot: string) {
 function updateLaunchJson(
   projectRoot: string,
   ports: ReturnType<typeof computePorts>,
+  frontendFramework: 'nextjs' | 'vite',
 ) {
   const launchPath = path.join(projectRoot, '.claude', 'launch.json');
   if (!fs.existsSync(launchPath)) return;
+
+  const prefix = frontendFramework === 'vite' ? 'VITE_' : 'NEXT_PUBLIC_';
 
   try {
     const launch = JSON.parse(fs.readFileSync(launchPath, 'utf-8'));
@@ -141,9 +146,9 @@ function updateLaunchJson(
         config.port = ports.frontend;
         config.env = {
           ...config.env,
-          NEXT_PUBLIC_API_URL: `http://127.0.0.1:${ports.backend}`,
-          NEXT_PUBLIC_FRONTEND_URL: `http://127.0.0.1:${ports.frontend}`,
-          NEXT_PUBLIC_ASSET_SRC: `http://127.0.0.1:${ports.s3}`,
+          [`${prefix}API_URL`]: `http://127.0.0.1:${ports.backend}`,
+          [`${prefix}FRONTEND_URL`]: `http://127.0.0.1:${ports.frontend}`,
+          [`${prefix}ASSET_SRC`]: `http://127.0.0.1:${ports.s3}`,
         };
       } else if (config.name === 'api') {
         config.port = ports.backend;
