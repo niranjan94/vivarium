@@ -8,8 +8,10 @@ Local dev stack manager CLI. Two runtime dependencies (`commander`, `yaml`), ~50
 |----------------|--------------------------|
 | `pnpm build`   | Compile TypeScript to `dist/` |
 | `pnpm dev`     | Watch mode compilation   |
+| `pnpm format`  | Biome lint + format with auto-fix (`--write --unsafe`) |
+| `pnpm test`    | Biome lint + format check (no writes) |
 
-No test framework is configured.
+No unit test framework is configured. `pnpm test` runs Biome as a lint/format gate.
 
 ## Architecture
 
@@ -19,7 +21,7 @@ src/
 ├── config.ts           # Loads vivarium.json or package.json["vivarium"]
 ├── ports.ts            # Deterministic port computation from index (0–99)
 ├── registry.ts         # Project state management in ~/.local/share/vivarium/<name>/
-├── compose.ts          # Docker Compose YAML generation via template literals
+├── compose.ts          # Docker Compose YAML generation (structured objects → yaml library)
 ├── env.ts              # .env generation (compose interpolation + per-package)
 ├── commands/
 │   ├── setup.ts        # Full setup flow (12 steps)
@@ -37,13 +39,14 @@ src/
 ## Key Design Decisions
 
 - **Structured YAML generation.** Compose files are built as plain objects and serialized via the `yaml` library.
-- **No tests.** The project has no test framework configured.
+- **No unit tests.** `pnpm test` runs `biome check` (lint + format validation) but there are no unit/integration tests.
 - **Zero-config port allocation.** `ports.ts` computes all ports from a single index. MCP sidecars are only accessed within the Docker network (no host-bound port).
 - **Registry = directories.** `~/.local/share/vivarium/<project>/` contains state.json, compose.yaml, .env. No files are written to the consuming project directory.
 - **Convention-based env generation.** Packages named `backend` and `frontend` get standard env vars automatically (`env.ts`). Custom `env` entries in config override conventions.
 
 ## Conventions
 
+- **Biome** for linting and formatting (2-space indent, single quotes, recommended rules, import organizing)
 - TypeScript ESM (`"type": "module"`)
 - All imports use `.js` extension (required for ESM)
 - JSDoc on all exported functions
