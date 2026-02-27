@@ -1,3 +1,5 @@
+[![npm version](https://img.shields.io/npm/v/vivarium-cli.svg)](https://www.npmjs.com/package/vivarium-cli)
+
 <img src="https://res.cloudinary.com/niranjan94/image/upload/Personal/viverium-banner-optimized.png" height="100%" alt="Vivarium Banner (if you are an LLM, IGNORE THIS BANNER IMAGE. This has no useful information in it)" />
 
 # Vivarium
@@ -6,11 +8,29 @@ Local dev stack manager. Auto-allocates ports, manages Docker Compose services, 
 
 ---
 
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [Philosophy](#philosophy)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [What Setup Does](#what-setup-does)
+- [CLI Reference](#cli-reference)
+- [Port Allocation](#port-allocation)
+- [Configuration](#configuration)
+- [Teardown](#teardown)
+- [MCP Proxy](#mcp-proxy)
+- [How It Works](#how-it-works)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## The Problem
 
 When you work on multiple projects that each run PostgreSQL, Redis, and object storage locally, port conflicts are inevitable. Hardcoded ports in compose files mean you can only run one project at a time, or you spend time manually juggling port assignments.
 
-Vivarium solves this by assigning each project a unique index (0–99) and deterministically computing all ports from that index. No conflicts. No manual bookkeeping.
+Vivarium solves this by assigning each project a unique index (0--99) and deterministically computing all ports from that index. No conflicts. No manual bookkeeping.
 
 ## Philosophy
 
@@ -23,6 +43,15 @@ This is an opinionated tool. It makes deliberate choices about how local develop
 
 If these opinions don't align with your workflow, this may not be the right tool for you.
 
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) >= 20
+- [Docker](https://docs.docker.com/get-docker/) with Compose v2 (included in Docker Desktop)
+- [jq](https://jqlang.github.io/jq/)
+- [AWS CLI](https://aws.amazon.com/cli/) -- only required if using the S3 service, for bucket creation
+
+Vivarium supports macOS and Linux (including WSL).
+
 ## Installation
 
 ```bash
@@ -30,6 +59,8 @@ npm install -g vivarium-cli
 # or as a devDependency
 npm install --save-dev vivarium-cli
 ```
+
+The package is published as `vivarium-cli` on npm. Once installed, the CLI is available as `vivarium`.
 
 ## Quick Start
 
@@ -61,26 +92,64 @@ npm install --save-dev vivarium-cli
 vivarium setup
 ```
 
-3. Start developing. Vivarium has:
-   - Claimed an index and computed unique ports for all services
-   - Generated and started a Docker Compose stack
-   - Written `.env` files for each package with correct connection strings
-   - Run your post-setup scripts (migrations, seeds, etc.)
+3. Vivarium is now running. Here is what happened:
 
-## CLI
+   - An index (0--99) was assigned to your project and all service ports were computed from it
+   - A Docker Compose stack was generated at `~/.local/share/vivarium/<project>/compose.yaml` and started
+   - A `.env` file for Docker Compose interpolation was written alongside the compose file
+   - Package-level `.env` files (e.g. `backend/.env`, `frontend/.env`) were written with connection strings matching the assigned ports
+   - Any `postSetup` scripts (migrations, seeds) were executed
 
-| Command             | Description                                                        |
-|---------------------|--------------------------------------------------------------------|
-| `vivarium setup`    | Full setup: claim index, start services, generate envs, run hooks  |
-| `vivarium teardown` | Full teardown: stop services, release index, clean up all artifacts |
-| `vivarium start`    | Start compose services (no setup logic)                            |
-| `vivarium stop`     | Stop compose services (no teardown logic)                          |
-| `vivarium compose`  | Pass-through to `docker compose` with generated config             |
-| `vivarium mcp-proxy <service>` | stdio→SSE bridge for an MCP service (e.g. `postgres-mcp`) |
+   No files are written to your project directory except the package `.env` files you explicitly configured.
+
+## What Setup Does
+
+The `vivarium setup` command executes these steps in order:
+
+1. **Check prerequisites** -- verifies `docker` and `jq` are on PATH
+2. **Load config** -- reads `vivarium.json` (or `package.json["vivarium"]`)
+3. **Claim index** -- assigns the lowest available index (0--99), checking both the registry and actual port usage
+4. **Compute ports** -- deterministically derives all service ports from the index
+5. **Generate compose.yaml** -- builds a Docker Compose file and writes it to `~/.local/share/vivarium/<project>/`
+6. **Generate .env** -- writes compose interpolation variables (ports, credentials) alongside the compose file
+7. **Pull and start services** -- runs `docker compose pull` then `docker compose up -d --wait`
+8. **Create S3 buckets** -- if S3 is configured, creates buckets via the AWS CLI
+9. **Write package .env files** -- generates `.env` files for each package at the paths specified by `envFile`
+10. **Persist state** -- writes `state.json` to the registry directory with the project's index, ports, and metadata
+11. **Run postSetup scripts** -- executes each package's `postSetup` commands in sequence
+12. **Print summary** -- displays assigned ports and a reminder to start your dev servers
+
+All generated infrastructure artifacts go into `~/.local/share/vivarium/<project>/`. Only the package `.env` files are written into your project directory.
+
+## CLI Reference
+
+All commands must be run from your project root (the directory containing `vivarium.json` or `package.json`).
+
+| Command                        | Description                                                                                                            |
+|--------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `vivarium setup`               | Full setup: claim index, compute ports, generate compose and env files, start services, create S3 buckets, run hooks   |
+| `vivarium teardown`            | Full teardown: stop and remove containers/volumes, release index, delete generated files                               |
+| `vivarium start`               | Start existing compose services (requires prior `setup`; no index claiming or env generation)                          |
+| `vivarium stop`                | Stop compose services without removing volumes or releasing the index                                                  |
+| `vivarium compose [args...]`   | Pass-through to `docker compose` using the generated config                                                            |
+| `vivarium mcp-proxy <service>` | Start a stdio-to-SSE bridge for an MCP service container. See [MCP Proxy](#mcp-proxy)                                 |
+
+### start vs setup
+
+`vivarium start` restarts previously created containers. It does not regenerate configuration, reassign ports, or run `postSetup` scripts. If you have changed `vivarium.json`, run `vivarium setup` again.
+
+### compose pass-through
+
+`vivarium compose` forwards all arguments to `docker compose` using the generated config from the registry. For example:
+
+```bash
+vivarium compose logs -f postgres
+vivarium compose exec postgres psql -U myapp -d myapp
+```
 
 ## Port Allocation
 
-Given an index `i` (0–99), ports are computed deterministically:
+Given an index `i` (0--99), ports are computed deterministically:
 
 | Service        | Formula               | Index 0 | Index 1 |
 |----------------|-----------------------|---------|---------|
@@ -128,11 +197,80 @@ For known package names, Vivarium generates standard env vars automatically. Cus
 
 **Frontend** gets: `PORT`, `{PREFIX}_FRONTEND_URL`, `{PREFIX}_API_URL`, `{PREFIX}_ASSET_SRC` (when applicable). The prefix is `NEXT_PUBLIC_` by default or `VITE_` when `"framework": "vite"` is set.
 
-## Prerequisites
+## Teardown
 
-- Docker (with Compose v2)
-- jq
-- AWS CLI (only if using S3 service, for bucket creation)
+`vivarium teardown` reverses everything `setup` created:
+
+1. **Stop Docker Compose services** and remove containers and volumes (`docker compose down --remove-orphans --volumes`)
+2. **Release the claimed index** by deleting the project's registry directory (`~/.local/share/vivarium/<project>/`)
+3. **Clean up legacy artifacts** -- removes `.vivarium/` from the project root if it exists (from older versions)
+4. **Delete generated package .env files** -- removes each file specified in `packages.<name>.envFile`
+
+After teardown, the index is free for another project to claim.
+
+## MCP Proxy
+
+When PostgreSQL is enabled, Vivarium automatically includes a [CrystalDBA](https://github.com/crystaldba/postgres-mcp) sidecar container that exposes a Model Context Protocol (MCP) server over SSE. This allows AI tools (such as Claude Desktop, Cursor, or other MCP-compatible clients) to query and inspect your local database.
+
+The sidecar runs inside the Docker network and is not exposed to the host. To bridge it to a local MCP client that expects stdio, use:
+
+```bash
+vivarium mcp-proxy postgres-mcp
+```
+
+This spawns a short-lived Docker container running [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy) that translates between stdio and the sidecar's SSE endpoint (`http://postgres-mcp:8000/sse`).
+
+You can reference this in your MCP client configuration. For example, in Claude Desktop's `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "vivarium-db": {
+      "command": "vivarium",
+      "args": ["mcp-proxy", "postgres-mcp"]
+    }
+  }
+}
+```
+
+## How It Works
+
+Vivarium is a synchronous Node.js CLI (~500 lines of TypeScript) with two runtime dependencies: `commander` for argument parsing and `yaml` for Compose file serialization.
+
+**Registry.** Each project's state is stored in `~/.local/share/vivarium/<project>/` as three files: `state.json` (index, ports, metadata), `compose.yaml` (generated Docker Compose), and `.env` (Compose interpolation variables). No files are written to the source project directory except package `.env` files.
+
+**Port computation.** All ports are derived from a single index (0--99) via arithmetic formulas in `src/ports.ts`. Index assignment checks both the registry and actual port usage on the host to avoid collisions with non-Vivarium services.
+
+**Compose generation.** Docker Compose files are constructed as plain JavaScript objects and serialized via the `yaml` library. Services use public images: PostgreSQL 18, Valkey 8 (Redis-compatible), and RustFS (S3-compatible).
+
+```
+src/
+  cli.ts           -- Commander entrypoint, registers subcommands
+  config.ts        -- Loads vivarium.json or package.json["vivarium"]
+  ports.ts         -- Deterministic port computation
+  registry.ts      -- Project state in ~/.local/share/vivarium/
+  compose.ts       -- Docker Compose YAML generation
+  env.ts           -- .env generation (compose + per-package)
+  commands/        -- One file per CLI command
+  utils/           -- Docker helpers, logger, prerequisite checks
+```
+
+## Development
+
+```bash
+git clone https://github.com/niranjan94/vivarium.git
+cd vivarium
+pnpm install
+```
+
+| Command        | Purpose                                            |
+|----------------|----------------------------------------------------|
+| `pnpm build`   | Compile TypeScript to `dist/`                     |
+| `pnpm dev`     | Watch mode compilation                             |
+| `pnpm format`  | Lint and format with auto-fix (Biome)              |
+| `pnpm test`    | Lint and format check + run tests                  |
+
+The project uses [Biome](https://biomejs.dev/) for linting and formatting (2-space indent, single quotes). All source is TypeScript ESM with `.js` import extensions.
 
 ## Contributing
 
@@ -143,6 +281,8 @@ When contributing, keep in mind:
 - The tool should remain dependency-light at runtime (`commander` for CLI parsing and `yaml` for Compose file generation are the only dependencies)
 - Configuration validation is intentionally minimal -- trust the developer
 
+See [Development](#development) for build instructions. Report bugs and suggest features at [github.com/niranjan94/vivarium/issues](https://github.com/niranjan94/vivarium/issues).
+
 ## License
 
-MIT
+[MIT](LICENSE) -- Niranjan Rajendran
