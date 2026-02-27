@@ -15,7 +15,8 @@
     "dev": "tsc --watch",
     "prepublishOnly": "tsc",
     "format": "biome check --write --unsafe",
-    "test": "biome check"
+    "test": "biome check && vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "dev",
