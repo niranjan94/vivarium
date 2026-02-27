@@ -1,15 +1,15 @@
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
-import { loadConfig, loadProjectName } from '../config.js';
-import { autoAssignIndex, projectDir, writeState } from '../registry.js';
-import type { VivariumState } from '../registry.js';
-import { computePorts } from '../ports.js';
 import { generateCompose } from '../compose.js';
+import { loadConfig, loadProjectName } from '../config.js';
 import { generateComposeEnv, writePackageEnvFiles } from '../env.js';
-import { dockerCompose, createS3Bucket } from '../utils/docker.js';
-import { checkPrerequisites } from '../utils/prerequisites.js';
+import { computePorts } from '../ports.js';
+import type { VivariumState } from '../registry.js';
+import { autoAssignIndex, projectDir, writeState } from '../registry.js';
+import { createS3Bucket, dockerCompose } from '../utils/docker.js';
 import { log } from '../utils/logger.js';
+import { checkPrerequisites } from '../utils/prerequisites.js';
 
 /**
  * Full setup flow:
@@ -58,7 +58,9 @@ export function setup(projectRoot: string) {
   // Pull and start services
   log.info('Starting services');
   dockerCompose(composePath, envPath, ['pull'], { cwd: projectRoot });
-  dockerCompose(composePath, envPath, ['up', '-d', '--wait'], { cwd: projectRoot });
+  dockerCompose(composePath, envPath, ['up', '-d', '--wait'], {
+    cwd: projectRoot,
+  });
   log.success('Services running');
 
   // Create S3 buckets if configured
@@ -66,7 +68,12 @@ export function setup(projectRoot: string) {
     log.info('Creating S3 buckets');
     const endpoint = `http://localhost:${ports.s3}`;
     for (const bucket of config.services.s3.buckets) {
-      createS3Bucket(endpoint, bucket, config.services.s3.accessKey, config.services.s3.secretKey);
+      createS3Bucket(
+        endpoint,
+        bucket,
+        config.services.s3.accessKey,
+        config.services.s3.secretKey,
+      );
     }
   }
 
@@ -104,7 +111,8 @@ export function setup(projectRoot: string) {
   log.success(`${projectName} setup complete (index ${index})`);
   log.blank();
   log.info('Port summary:');
-  if (config.services.postgres) log.step(`PostgreSQL:  localhost:${ports.postgres}`);
+  if (config.services.postgres)
+    log.step(`PostgreSQL:  localhost:${ports.postgres}`);
   if (config.services.redis) log.step(`Redis:       localhost:${ports.redis}`);
   if (config.services.s3) {
     log.step(`S3 (API):    localhost:${ports.s3}`);
@@ -117,7 +125,10 @@ export function setup(projectRoot: string) {
 }
 
 /** Update .claude/launch.json with computed ports. */
-function updateLaunchJson(projectRoot: string, ports: ReturnType<typeof computePorts>) {
+function updateLaunchJson(
+  projectRoot: string,
+  ports: ReturnType<typeof computePorts>,
+) {
   const launchPath = path.join(projectRoot, '.claude', 'launch.json');
   if (!fs.existsSync(launchPath)) return;
 
@@ -143,7 +154,7 @@ function updateLaunchJson(projectRoot: string, ports: ReturnType<typeof computeP
       }
     }
 
-    fs.writeFileSync(launchPath, JSON.stringify(launch, null, 2) + '\n');
+    fs.writeFileSync(launchPath, `${JSON.stringify(launch, null, 2)}\n`);
     log.step('Updated .claude/launch.json');
   } catch {
     log.warn('Could not update .claude/launch.json');

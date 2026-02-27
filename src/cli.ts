@@ -1,29 +1,35 @@
 #!/usr/bin/env node
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { compose } from './commands/compose.js';
+import { mcpProxy } from './commands/mcp-proxy.js';
 import { setup } from './commands/setup.js';
-import { teardown } from './commands/teardown.js';
 import { start } from './commands/start.js';
 import { stop } from './commands/stop.js';
-import { mcpProxy } from './commands/mcp-proxy.js';
-import { compose } from './commands/compose.js';
+import { teardown } from './commands/teardown.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8'));
+const pkg = JSON.parse(
+  readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8'),
+);
 
 const program = new Command();
 
 program
   .name('vivarium')
-  .description('Local dev stack manager — auto-allocates ports, manages Docker Compose services, generates .env files')
+  .description(
+    'Local dev stack manager — auto-allocates ports, manages Docker Compose services, generates .env files',
+  )
   .version(pkg.version);
 
 program
   .command('setup')
-  .description('Auto-claim index, spin up services, generate .env files, run post-setup scripts')
+  .description(
+    'Auto-claim index, spin up services, generate .env files, run post-setup scripts',
+  )
   .action(() => {
     setup(process.cwd());
   });

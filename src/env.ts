@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { VivariumConfig, ServiceConfig, PackageConfig } from './config.js';
+import type { PackageConfig, ServiceConfig, VivariumConfig } from './config.js';
 import type { PortMap } from './ports.js';
 import { log } from './utils/logger.js';
 
@@ -12,10 +12,7 @@ export function generateComposeEnv(
   ports: PortMap,
   composeName: string,
 ): string {
-  const lines: string[] = [
-    `COMPOSE_PROJECT_NAME=${composeName}`,
-    '',
-  ];
+  const lines: string[] = [`COMPOSE_PROJECT_NAME=${composeName}`, ''];
 
   if (config.services.postgres) {
     lines.push(
@@ -143,7 +140,13 @@ export function writePackageEnvFiles(
   for (const [pkgName, pkgConfig] of Object.entries(config.packages)) {
     if (!pkgConfig.envFile) continue;
 
-    const envContent = generatePackageEnv(pkgName, pkgConfig, config, ports, allPackageNames);
+    const envContent = generatePackageEnv(
+      pkgName,
+      pkgConfig,
+      config,
+      ports,
+      allPackageNames,
+    );
     const envPath = path.join(projectRoot, pkgConfig.envFile);
 
     fs.mkdirSync(path.dirname(envPath), { recursive: true });

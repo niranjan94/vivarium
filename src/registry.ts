@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { log } from './utils/logger.js';
-import { computePorts, isPortInUse } from './ports.js';
 import type { PortMap } from './ports.js';
+import { computePorts, isPortInUse } from './ports.js';
+import { log } from './utils/logger.js';
 
 const REGISTRY_DIR = path.join(os.homedir(), '.local', 'share', 'vivarium');
 const MAX_INDEX = 100;
@@ -33,7 +33,10 @@ export function readState(projectName: string): VivariumState | null {
 export function writeState(state: VivariumState) {
   const dir = projectDir(state.projectName);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify(state, null, 2));
+  fs.writeFileSync(
+    path.join(dir, 'state.json'),
+    JSON.stringify(state, null, 2),
+  );
 }
 
 /** Remove a project's entire registry directory. */
@@ -74,7 +77,10 @@ export function findExistingClaim(projectName: string): VivariumState | null {
  * Check whether any of the candidate ports collide with ports
  * already claimed by other projects.
  */
-function hasPortCollision(candidatePorts: PortMap, claimedStates: VivariumState[]): boolean {
+function hasPortCollision(
+  candidatePorts: PortMap,
+  claimedStates: VivariumState[],
+): boolean {
   const candidateValues = new Set(Object.values(candidatePorts));
   for (const state of claimedStates) {
     for (const port of Object.values(state.ports)) {
@@ -113,7 +119,9 @@ export function autoAssignIndex(projectName: string): number {
     }
 
     if (isPortInUse(ports.postgres)) {
-      log.dim(`Index ${i} has no claim but postgres port ${ports.postgres} is in use, skipping`);
+      log.dim(
+        `Index ${i} has no claim but postgres port ${ports.postgres} is in use, skipping`,
+      );
       continue;
     }
 
@@ -121,6 +129,8 @@ export function autoAssignIndex(projectName: string): number {
     return i;
   }
 
-  log.error(`No available index (0–${MAX_INDEX - 1}). Free up a slot or teardown another project.`);
+  log.error(
+    `No available index (0–${MAX_INDEX - 1}). Free up a slot or teardown another project.`,
+  );
   process.exit(1);
 }

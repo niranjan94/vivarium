@@ -20,6 +20,8 @@ export function start(projectRoot: string) {
   }
 
   log.info('Starting services');
-  dockerCompose(composePath, envPath, ['up', '-d', '--wait'], { cwd: projectRoot });
+  dockerCompose(composePath, envPath, ['up', '-d', '--wait'], {
+    cwd: projectRoot,
+  });
   log.success('Services running');
 }

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: these are meant for docker compose */
 import { stringify } from 'yaml';
 
 import type { ServiceConfig } from './config.js';
@@ -84,7 +85,10 @@ function postgresService(): ComposeService {
     ports: ['${POSTGRES_PORT}:5432'],
     volumes: ['postgres-data:/var/lib/postgresql'],
     healthcheck: {
-      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1'],
+      test: [
+        'CMD-SHELL',
+        'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1',
+      ],
       interval: '10s',
       timeout: '5s',
       retries: 5,
@@ -141,7 +145,8 @@ function postgresMcpService(): ComposeService {
     command: ['--access-mode=unrestricted', '--transport=sse'],
     restart: 'unless-stopped',
     environment: {
-      DATABASE_URI: 'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}',
+      DATABASE_URI:
+        'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}',
     },
     depends_on: {
       postgres: {

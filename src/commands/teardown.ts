@@ -27,9 +27,14 @@ export function teardown(projectRoot: string) {
   if (fs.existsSync(composePath) && fs.existsSync(envPath)) {
     log.step('Stopping compose services');
     try {
-      dockerCompose(composePath, envPath, ['down', '--remove-orphans', '--volumes'], {
-        cwd: projectRoot,
-      });
+      dockerCompose(
+        composePath,
+        envPath,
+        ['down', '--remove-orphans', '--volumes'],
+        {
+          cwd: projectRoot,
+        },
+      );
       log.success('Services stopped');
     } catch {
       log.warn('Failed to stop some services (they may already be stopped)');

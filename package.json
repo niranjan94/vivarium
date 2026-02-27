@@ -13,7 +13,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "prepublishOnly": "tsc"
+    "prepublishOnly": "tsc",
+    "format": "biome check --write --unsafe",
+    "test": "biome check"
   },
   "keywords": [
     "dev",
@@ -40,6 +42,7 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.10.13",
     "typescript": "^5.9.3"

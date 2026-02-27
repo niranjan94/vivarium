@@ -54,7 +54,9 @@ export function loadConfig(projectRoot: string): VivariumConfig {
     }
   }
 
-  log.error('No vivarium config found. Create vivarium.json or add "vivarium" to package.json.');
+  log.error(
+    'No vivarium config found. Create vivarium.json or add "vivarium" to package.json.',
+  );
   process.exit(1);
 }
 
