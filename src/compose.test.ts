@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: meant for compose */
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { generateCompose } from './compose.js';
