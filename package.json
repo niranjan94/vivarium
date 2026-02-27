@@ -1,0 +1,46 @@
+{
+  "name": "vivarium-cli",
+  "version": "1.0.0",
+  "description": "Local dev stack manager — auto-allocates ports, manages Docker Compose services, generates .env files",
+  "type": "module",
+  "bin": {
+    "vivarium": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "tsc"
+  },
+  "keywords": [
+    "dev",
+    "local",
+    "docker",
+    "compose",
+    "ports"
+  ],
+  "author": "Niranjan Rajendran (https://github.com/niranjan94)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niranjan94/vivarium.git"
+  },
+  "homepage": "https://github.com/niranjan94/vivarium#readme",
+  "bugs": {
+    "url": "https://github.com/niranjan94/vivarium/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node24": "^24.0.4",
+    "@types/node": "^24.10.13",
+    "typescript": "^5.9.3"
+  }
+}
