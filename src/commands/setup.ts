@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateCompose } from '../compose.js';
-import { loadConfig, loadProjectName } from '../config.js';
+import { loadConfig, loadProjectName, type PackageConfig } from '../config.js';
 import { generateComposeEnv, writePackageEnvFiles } from '../env.js';
 import { computePorts } from '../ports.js';
 import type { VivariumState } from '../registry.js';
@@ -105,8 +105,9 @@ export function setup(projectRoot: string) {
   }
 
   // Update .claude/launch.json
-  const frontendFramework = config.packages.frontend?.framework ?? 'nextjs';
-  updateLaunchJson(projectRoot, ports, frontendFramework);
+  const hasFrontend = 'frontend' in config.packages;
+  const hasBackend = 'backend' in config.packages;
+  updateLaunchJson(projectRoot, ports, config.packages);
 
   // Print summary
   log.blank();
@@ -120,8 +121,8 @@ export function setup(projectRoot: string) {
     log.step(`S3 (API):    localhost:${ports.s3}`);
     log.step(`S3 (console): localhost:${ports.s3Console}`);
   }
-  log.step(`Frontend:    localhost:${ports.frontend}`);
-  log.step(`Backend:     localhost:${ports.backend}`);
+  if (hasFrontend) log.step(`Frontend:    localhost:${ports.frontend}`);
+  if (hasBackend) log.step(`Backend:     localhost:${ports.backend}`);
   log.blank();
   log.dim("Run 'pnpm dev' to start the development servers.");
 }
@@ -130,31 +131,38 @@ export function setup(projectRoot: string) {
 function updateLaunchJson(
   projectRoot: string,
   ports: ReturnType<typeof computePorts>,
-  frontendFramework: 'nextjs' | 'vite',
+  packages: Record<string, PackageConfig>,
 ) {
   const launchPath = path.join(projectRoot, '.claude', 'launch.json');
   if (!fs.existsSync(launchPath)) return;
 
-  const prefix = frontendFramework === 'vite' ? 'VITE_' : 'NEXT_PUBLIC_';
+  const hasFrontend = 'frontend' in packages;
+  const hasBackend = 'backend' in packages;
 
   try {
     const launch = JSON.parse(fs.readFileSync(launchPath, 'utf-8'));
     if (!Array.isArray(launch.configurations)) return;
 
     for (const config of launch.configurations) {
-      if (config.name === 'frontend') {
+      if (hasFrontend && config.name === 'frontend') {
+        const framework = packages.frontend?.framework ?? 'nextjs';
+        const prefix = framework === 'vite' ? 'VITE_' : 'NEXT_PUBLIC_';
         config.port = ports.frontend;
         config.env = {
           ...config.env,
-          [`${prefix}API_URL`]: `http://127.0.0.1:${ports.backend}`,
+          ...(hasBackend && {
+            [`${prefix}API_URL`]: `http://127.0.0.1:${ports.backend}`,
+          }),
           [`${prefix}FRONTEND_URL`]: `http://127.0.0.1:${ports.frontend}`,
           [`${prefix}ASSET_SRC`]: `http://127.0.0.1:${ports.s3}`,
         };
-      } else if (config.name === 'api') {
+      } else if (hasBackend && config.name === 'api') {
         config.port = ports.backend;
         config.env = {
           ...config.env,
-          FRONTEND_URL: `http://127.0.0.1:${ports.frontend}`,
+          ...(hasFrontend && {
+            FRONTEND_URL: `http://127.0.0.1:${ports.frontend}`,
+          }),
         };
       }
     }
