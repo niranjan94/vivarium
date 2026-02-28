@@ -24,6 +24,7 @@ Local dev stack manager. Auto-allocates ports, manages Docker Compose services, 
 - [How It Works](#how-it-works)
 - [Development](#development)
 - [Contributing](#contributing)
+- [AI Disclosure](#ai-disclosure)
 - [License](#license)
 
 ## The Problem
@@ -282,6 +283,10 @@ When contributing, keep in mind:
 - Configuration validation is intentionally minimal -- trust the developer
 
 See [Development](#development) for build instructions. Report bugs and suggest features at [github.com/niranjan94/vivarium/issues](https://github.com/niranjan94/vivarium/issues).
+
+## AI Disclosure
+
+Parts of this project were developed with the assistance of AI coding tools. All generated code has been reviewed and tested by the maintainer.
 
 ## License
 
