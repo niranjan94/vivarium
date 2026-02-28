@@ -12,11 +12,11 @@ function checkCommand(name: string): boolean {
 }
 
 /**
- * Verify that all required prerequisites (docker, jq) are installed.
+ * Verify that all required prerequisites (docker) are installed.
  * Exits the process if any are missing.
  */
 export function checkPrerequisites() {
-  const required = ['docker', 'jq'];
+  const required = ['docker'];
   const missing = required.filter((cmd) => !checkCommand(cmd));
 
   if (missing.length > 0) {

@@ -76,7 +76,7 @@ describe('readState', () => {
 });
 
 describe('writeState', () => {
-  it('creates dir and writes state as JSON', () => {
+  it('creates dir and writes state atomically via tmp + rename', () => {
     const state = makeState();
     writeState(state);
     expect(vi.mocked(fs.mkdirSync)).toHaveBeenCalledWith(
@@ -84,8 +84,12 @@ describe('writeState', () => {
       { recursive: true },
     );
     expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-      `${REGISTRY_DIR}/test-project/state.json`,
+      `${REGISTRY_DIR}/test-project/state.json.tmp`,
       JSON.stringify(state, null, 2),
+    );
+    expect(vi.mocked(fs.renameSync)).toHaveBeenCalledWith(
+      `${REGISTRY_DIR}/test-project/state.json.tmp`,
+      `${REGISTRY_DIR}/test-project/state.json`,
     );
   });
 });

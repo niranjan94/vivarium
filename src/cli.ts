@@ -8,6 +8,7 @@ import { compose } from './commands/compose.js';
 import { mcpProxy } from './commands/mcp-proxy.js';
 import { setup } from './commands/setup.js';
 import { start } from './commands/start.js';
+import { status } from './commands/status.js';
 import { stop } from './commands/stop.js';
 import { teardown } from './commands/teardown.js';
 
@@ -53,6 +54,13 @@ program
   .description('Stop compose services (no teardown logic)')
   .action(() => {
     stop(process.cwd());
+  });
+
+program
+  .command('status')
+  .description('Show project state, assigned ports, and container status')
+  .action(() => {
+    status(process.cwd());
   });
 
 program

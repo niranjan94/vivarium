@@ -47,7 +47,6 @@ If these opinions don't align with your workflow, this may not be the right tool
 
 - [Node.js](https://nodejs.org/) >= 20
 - [Docker](https://docs.docker.com/get-docker/) with Compose v2 (included in Docker Desktop)
-- [jq](https://jqlang.github.io/jq/)
 - [AWS CLI](https://aws.amazon.com/cli/) -- only required if using the S3 service, for bucket creation
 
 Vivarium supports macOS and Linux (including WSL).
@@ -131,6 +130,7 @@ All commands must be run from your project root (the directory containing `vivar
 | `vivarium teardown`            | Full teardown: stop and remove containers/volumes, release index, delete generated files                               |
 | `vivarium start`               | Start existing compose services (requires prior `setup`; no index claiming or env generation)                          |
 | `vivarium stop`                | Stop compose services without removing volumes or releasing the index                                                  |
+| `vivarium status`              | Show project state: claimed index, assigned ports, and container status                                                |
 | `vivarium compose [args...]`   | Pass-through to `docker compose` using the generated config                                                            |
 | `vivarium mcp-proxy <service>` | Start a stdio-to-SSE bridge for an MCP service container. See [MCP Proxy](#mcp-proxy)                                 |
 

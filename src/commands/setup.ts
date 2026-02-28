@@ -118,7 +118,7 @@ export function setup(projectRoot: string) {
   if (config.services.redis) log.step(`Redis:       localhost:${ports.redis}`);
   if (config.services.s3) {
     log.step(`S3 (API):    localhost:${ports.s3}`);
-    log.step(`S3 (console):localhost:${ports.s3Console}`);
+    log.step(`S3 (console): localhost:${ports.s3Console}`);
   }
   log.step(`Frontend:    localhost:${ports.frontend}`);
   log.step(`Backend:     localhost:${ports.backend}`);
