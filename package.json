@@ -1,6 +1,6 @@
 {
   "name": "vivarium-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local dev stack manager — auto-allocates ports, manages Docker Compose services, generates .env files",
   "type": "module",
   "bin": {
