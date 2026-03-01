@@ -194,7 +194,7 @@ Each entry in `packages` can specify:
 
 For known package names, Vivarium generates standard env vars automatically. Custom `env` entries always take precedence.
 
-**Backend** gets: `DATABASE_URL`, `REDIS_ENABLED`, `REDIS_URL`, `REDIS_QUEUE_URL`, `AWS_S3_*`, `API_LISTEN_PORT`, `API_URL`, `FRONTEND_URL` (when applicable).
+**Backend** gets: `DATABASE_URL`, `REDIS_ENABLED`, `REDIS_URL`, `AWS_S3_*`, `API_LISTEN_PORT`, `API_URL`, `FRONTEND_URL` (when applicable).
 
 **Frontend** gets: `PORT`, `{PREFIX}_FRONTEND_URL`, `{PREFIX}_API_URL`, `{PREFIX}_ASSET_SRC` (when applicable). The prefix is `NEXT_PUBLIC_` by default or `VITE_` when `"framework": "vite"` is set.
 

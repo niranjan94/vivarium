@@ -100,7 +100,6 @@ function generateBackendEnv(
   if (services.redis) {
     vars.REDIS_ENABLED = 'true';
     vars.REDIS_URL = `redis://localhost:${ports.redis}/0`;
-    vars.REDIS_QUEUE_URL = `redis://localhost:${ports.redis}/1`;
   }
 
   if (services.s3) {

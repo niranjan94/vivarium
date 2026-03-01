@@ -159,7 +159,6 @@ describe('generatePackageEnv (backend)', () => {
     );
     expect(result).toContain('REDIS_ENABLED=true');
     expect(result).toContain('REDIS_URL=redis://localhost:6380/0');
-    expect(result).toContain('REDIS_QUEUE_URL=redis://localhost:6380/1');
   });
 
   it('includes S3 vars with bucket names', () => {
