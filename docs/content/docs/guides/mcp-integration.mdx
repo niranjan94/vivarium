@@ -1,0 +1,77 @@
+---
+title: MCP Integration
+description: Connect Claude and Cursor to your local Postgres via MCP
+---
+
+## What is postgres-mcp
+
+When your Vivarium config includes a `postgres` service, Vivarium automatically adds a `postgres-mcp` sidecar to the generated Docker Compose file. This sidecar runs CrystalDBA's Postgres MCP server, giving AI tools direct query access to your local database.
+
+No extra configuration is needed. The sidecar appears whenever postgres is present.
+
+The sidecar runs with `--access-mode=unrestricted --transport=sse` and depends on the postgres health check passing before it starts.
+
+## Network Isolation
+
+The `postgres-mcp` sidecar has no host port binding. It is only reachable inside the Docker Compose network (`{composeName}_default`). This is intentional -- it is not a public or LAN-accessible endpoint.
+
+The bridge between the Docker network and your local MCP client is the `vivarium mcp-proxy` command.
+
+## vivarium mcp-proxy
+
+`vivarium mcp-proxy postgres-mcp` is a long-lived process that bridges stdin/stdout to the SSE endpoint inside the Docker network:
+
+```bash
+docker run --rm -i \
+  --network {composeName}_default \
+  ghcr.io/sparfenyuk/mcp-proxy:v0.11.0 \
+  http://postgres-mcp:8000/sse
+```
+
+You do not run this manually. You configure your MCP client to run it as a command, and the client manages the process lifecycle.
+
+## Claude Desktop Setup
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "vivarium",
+      "args": ["mcp-proxy", "postgres-mcp"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving. The `postgres` MCP server will appear in the tool list.
+
+## Cursor Setup
+
+Add to `.cursor/mcp.json` in your project root (project-scoped) or `~/.cursor/mcp.json` (global):
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "vivarium",
+      "args": ["mcp-proxy", "postgres-mcp"]
+    }
+  }
+}
+```
+
+Cursor picks up the config on next reload.
+
+## Claude Code: .claude/launch.json Auto-Update
+
+If your project has a `.claude/launch.json` file, `vivarium setup` automatically patches it. For any configuration named `frontend` or `api`, Vivarium updates the `port` and `env` fields to match the current index's computed ports.
+
+This means your Claude Code debug launch config stays in sync automatically whenever the project index changes (for example, after a teardown and re-setup on a machine where the old index is now taken).
+
+There is nothing to configure -- the patch happens as part of the normal setup flow.
+
+<Callout type="info">
+`vivarium mcp-proxy` runs as a subprocess managed by the MCP client. Claude Desktop and Cursor start it on demand and stop it when the session ends. The Vivarium stack (Docker services) must be running for the proxy to work -- start it with `vivarium start` before your MCP client connects.
+</Callout>

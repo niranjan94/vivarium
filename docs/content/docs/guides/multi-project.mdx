@@ -1,0 +1,79 @@
+---
+title: Running Multiple Projects
+description: How Vivarium manages port isolation across multiple local projects
+---
+
+## The Problem
+
+Multiple local projects each need their own Postgres, Redis, and S3. Run them simultaneously and you immediately hit port conflicts. Vivarium solves this by assigning every project a numeric index and deriving all ports from it arithmetically.
+
+## Index Assignment
+
+When you run `vivarium setup`, Vivarium scans all registered projects, finds the first free slot between 0 and 99, and assigns it to your project. The process is automatic and requires no configuration.
+
+The index is "soft-claimed" during setup and only written to disk after all services are confirmed healthy (step 10 of the setup flow). If setup fails partway through, the slot is released.
+
+Re-running `vivarium setup` on a project that already has an index reuses that same index. The operation is idempotent.
+
+## Port Formulas
+
+Given a project index `i`, Vivarium computes ports as follows:
+
+| Service    | Formula         |
+|------------|-----------------|
+| Postgres   | `5433 + i`      |
+| Redis      | `6380 + i`      |
+| S3         | `9010 + (i * 10)` |
+| Frontend   | `4000 + (i * 10)` |
+| Backend    | `4001 + (i * 10)` |
+
+## Example: Two Projects Running Simultaneously
+
+`project-a` gets index 0, `project-b` gets index 1.
+
+| Service    | project-a (i=0) | project-b (i=1) |
+|------------|-----------------|-----------------|
+| Postgres   | 5433            | 5434            |
+| Redis      | 6380            | 6381            |
+| S3         | 9010            | 9020            |
+| Frontend   | 4000            | 4010            |
+| Backend    | 4001            | 4011            |
+
+No conflicts. Both stacks run at the same time.
+
+## Collision Detection
+
+Index assignment runs three checks in order before accepting a candidate slot:
+
+1. **Registry check** - if this project name already has a claimed index, reuse it immediately without checking further.
+2. **Cross-project port overlap** - compute all ports for the candidate index. If any of those ports is already used by any registered project (at any service), skip this index.
+3. **Live port check** - for each computed port, check whether something is currently listening on it (`lsof` on macOS, `ss` on Linux/WSL). If anything is using it, skip this index.
+
+The cross-project check compares against all ports of all claimed projects, not just the same service type. A Postgres port for one project will block a Frontend port for another if the numbers happen to collide.
+
+If no index passes all three checks, `vivarium setup` exits with an error. This is only possible if you have 100 projects registered or if unusually many ports on your machine are occupied.
+
+## Checking Status
+
+Run `vivarium status` from inside a project directory to see its current state:
+
+```bash
+cd /path/to/project-a
+vivarium status
+```
+
+This shows the assigned index, computed ports, and whether services are running. You must `cd` to a project to check its status -- there is no global view across all projects.
+
+## The 100-Project Limit
+
+Vivarium supports at most 100 simultaneous projects (indices 0 through 99). In practice, you are unlikely to hit this limit. If you do, run `vivarium teardown` in projects you are no longer using to release their indices.
+
+## Stop vs. Teardown
+
+`vivarium stop` shuts down Docker containers but keeps the index and registry entry. The port slot stays reserved.
+
+`vivarium teardown` removes the registry entry and releases the index back to the pool. Use teardown when you are done with a project, not just pausing it.
+
+<Callout type="info">
+If you rename a project (change the `name` field in `package.json`), Vivarium treats it as a new project and assigns a new index. The old registry entry under the previous name remains until you run `vivarium teardown` from the old project state.
+</Callout>

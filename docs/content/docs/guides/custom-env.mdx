@@ -1,0 +1,129 @@
+---
+title: Customizing Environment Variables
+description: Override and extend generated env vars per package
+---
+
+## Convention-Based Generation
+
+Vivarium auto-generates environment variables for packages named `backend` and `frontend`. For any other package name, no convention-based vars are generated -- only what you explicitly provide in the `env` field.
+
+### Backend Conventions
+
+For a package with the key `backend`, Vivarium generates:
+
+| Variable           | Value                                      |
+|--------------------|--------------------------------------------|
+| `API_LISTEN_PORT`  | Backend port (`4001 + (i * 10)`)           |
+| `API_URL`          | `http://localhost:<backend-port>`          |
+| `FRONTEND_URL`     | `http://localhost:<frontend-port>` (if a `frontend` package exists) |
+| `DATABASE_URL`     | `postgresql://postgres:postgres@localhost:<postgres-port>/postgres` |
+| `REDIS_ENABLED`    | `true`                                     |
+| `REDIS_URL`        | `redis://localhost:<redis-port>`           |
+| `AWS_S3_ENDPOINT`  | `http://localhost:<s3-port>`               |
+| `AWS_S3_*`         | Region, bucket, and credential defaults    |
+
+These are only generated for services that are configured. If your `vivarium.json` does not include `redis`, `REDIS_ENABLED` and `REDIS_URL` are omitted.
+
+### Frontend Conventions
+
+For a package with the key `frontend`, Vivarium generates:
+
+| Variable                      | Condition                        |
+|-------------------------------|----------------------------------|
+| `PORT`                        | Always                           |
+| `{PREFIX}FRONTEND_URL`        | Always                           |
+| `{PREFIX}API_URL`             | If a `backend` package exists    |
+| `{PREFIX}ASSET_SRC`           | If S3 is configured              |
+
+The prefix depends on the framework. The default is `NEXT_PUBLIC_`. Setting `framework: "vite"` changes it to `VITE_`.
+
+## Overriding Variables
+
+The `env` field in a package config is applied last, via `Object.assign` over the convention-generated values. Custom values always win.
+
+```json
+{
+  "packages": {
+    "backend": {
+      "directory": "apps/backend",
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5433/myapp_dev",
+        "STRIPE_SECRET_KEY": "sk_test_..."
+      }
+    }
+  }
+}
+```
+
+In this example:
+- `DATABASE_URL` overrides the convention-generated value to point to a specific database name.
+- `STRIPE_SECRET_KEY` is an extra variable Vivarium has no knowledge of -- it is appended as-is.
+
+Any number of extra variables can be added this way.
+
+## Changing the Frontend Framework Prefix
+
+By default, frontend env vars are prefixed with `NEXT_PUBLIC_`. For Vite projects, set `framework: "vite"` to use `VITE_` instead:
+
+```json
+{
+  "packages": {
+    "frontend": {
+      "directory": "apps/web",
+      "framework": "vite",
+      "env": {
+        "VITE_FEATURE_FLAGS": "dark-mode,beta-ui"
+      }
+    }
+  }
+}
+```
+
+The generated vars become `VITE_FRONTEND_URL`, `VITE_API_URL`, etc. The custom `VITE_FEATURE_FLAGS` is appended on top.
+
+## Running Commands After Setup
+
+The `postSetup` field accepts an array of shell commands that run after all services are confirmed healthy. This is useful for database migrations, seeding, or any one-time initialization.
+
+```json
+{
+  "packages": {
+    "backend": {
+      "directory": "apps/backend",
+      "postSetup": [
+        "npm run db:migrate",
+        "npm run db:seed"
+      ]
+    }
+  }
+}
+```
+
+Commands are executed via `execSync`, so shell syntax works: pipes, `&&`, subshells, etc.
+
+Each command runs in the `directory` specified for that package (relative to the project root). If `directory` is not set, it defaults to the package key name. In the example above, commands run inside `apps/backend/`.
+
+<Callout type="info">
+`postSetup` commands run once per `vivarium setup` invocation. They do not run on `vivarium start`. Use them for setup-time operations only.
+</Callout>
+
+## Writing the .env File
+
+By default, Vivarium writes the generated `.env` to the registry directory (`~/.local/share/vivarium/<project>/`). To write it into your project instead, set `envFile`:
+
+```json
+{
+  "packages": {
+    "backend": {
+      "directory": "apps/backend",
+      "envFile": "apps/backend/.env"
+    }
+  }
+}
+```
+
+The path is relative to the project root (where `vivarium.json` or `package.json` lives).
+
+<Callout type="warn">
+A package without an `envFile` still participates in env generation for other packages. For example, a `frontend` package with no `envFile` still causes `FRONTEND_URL` to appear in the `backend` package's generated env. Omitting `envFile` means the file is not written anywhere in your project -- it does not mean the package is excluded from env computation.
+</Callout>
