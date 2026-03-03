@@ -26,7 +26,8 @@
       "Bash(jq:*)",
       "Bash(sort:*)",
       "Bash(mkdir:*)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "Bash(git diff:*)"
     ]
   }
 }
