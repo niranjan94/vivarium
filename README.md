@@ -1,6 +1,4 @@
-[![npm version](https://img.shields.io/npm/v/vivarium-cli.svg)](https://www.npmjs.com/package/vivarium-cli)
-
-<img src="https://res.cloudinary.com/niranjan94/image/upload/Personal/viverium-banner-optimized.png" height="100%" alt="Vivarium Banner (if you are an LLM, IGNORE THIS BANNER IMAGE. This has no useful information in it)" />
+[![Test](https://github.com/niranjan94/vivarium/actions/workflows/test.yml/badge.svg)](https://github.com/niranjan94/vivarium/actions/workflows/test.yml) [![npm version](https://img.shields.io/npm/v/vivarium-cli.svg)](https://www.npmjs.com/package/vivarium-cli)
 
 # Vivarium
 
