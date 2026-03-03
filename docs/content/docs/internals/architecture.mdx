@@ -1,0 +1,148 @@
+---
+title: Architecture
+description: How the Vivarium codebase is structured
+---
+
+## Source Tree
+
+```
+src/
+├── cli.ts              Commander entrypoint. Registers 7 subcommands and
+│                       resolves projectRoot from process.cwd().
+│
+├── config.ts           Loads vivarium.json or package.json["vivarium"].
+│                       Exports VivariumConfig and related types.
+│
+├── ports.ts            computePorts(index) -- pure arithmetic, no I/O.
+│                       isPortInUse() -- platform-aware live port check.
+│
+├── registry.ts         Project state management.
+│                       Reads and writes ~/.local/share/vivarium/<name>/.
+│                       autoAssignIndex, writeState, removeProject, listClaimed.
+│
+├── compose.ts          Docker Compose YAML generation.
+│                       Builds plain JS objects, serializes via yaml library.
+│
+├── env.ts              .env generation.
+│                       Compose-level interpolation vars + per-package env files.
+│
+├── commands/
+│   ├── setup.ts        Full 12-step setup flow.
+│   ├── teardown.ts     Full teardown, including legacy .vivarium/ migration.
+│   ├── start.ts        docker compose up. No setup logic.
+│   ├── stop.ts         docker compose down. No teardown logic.
+│   ├── status.ts       Reads state, prints ports, runs docker compose ps.
+│   ├── compose.ts      Pass-through to docker compose with arbitrary args.
+│   └── mcp-proxy.ts    stdio to SSE bridge for MCP services.
+│
+└── utils/
+    ├── docker.ts       docker and docker compose exec helpers.
+    ├── logger.ts       ANSI color-coded logger.
+    └── prerequisites.ts  docker availability check run before any command.
+```
+
+## Data Flow
+
+Config is loaded and transformed in a linear pipeline before Docker is involved:
+
+```
+vivarium.json (or package.json["vivarium"])
+    |
+    v
+config.ts -- loadConfig()
+    |
+    v  VivariumConfig
+    |
+    v
+registry.ts -- autoAssignIndex()
+    |
+    v  index: number
+    |
+    v
+ports.ts -- computePorts()
+    |
+    v  PortMap
+    |
+   / \
+  /   \
+ v     v
+compose.ts    env.ts
+    |              |
+    v              v
+compose.yaml     .env (registry)
+    |
+    v
+docker compose up
+    |
+    v
+Running containers
+    |
+    v
+env.ts -- writePackageEnvFiles()
+    |
+    v
+backend/.env, frontend/.env, ...
+```
+
+Each stage has one input and one output. No stage reaches back to an earlier one.
+
+## Design Decisions
+
+### Synchronous I/O Throughout
+
+The entire CLI is synchronous. Every file read, file write, and subprocess call uses the synchronous Node.js API (`fs.readFileSync`, `execFileSync`, `fs.renameSync`). There is no async, no promises, no event loop to reason about.
+
+This is deliberate. A CLI that runs start to finish in a straight line is easier to reason about, easier to debug, and easier to extend than one that manages concurrent async operations. The tradeoff -- you cannot overlap I/O -- is acceptable for a local dev tool that runs for a few seconds.
+
+### execFileSync Over execSync
+
+All subprocess calls use `execFileSync` rather than `execSync`. `execFileSync` passes arguments as an array without invoking a shell, which eliminates shell injection as a concern.
+
+The one exception is `postSetup`: user-defined commands in the config run via `execSync` because shell syntax (pipes, `&&`, subshells) is part of the expected use case. This is documented in the configuration reference. Keep `postSetup` commands static.
+
+### Structured YAML Generation
+
+`compose.ts` builds the Docker Compose file as a plain JavaScript object and serializes it with the `yaml` library. There are no template strings, no heredocs, no multiline string concatenation. Each service and each field is an explicit object property.
+
+This makes the output predictable, makes diffs readable, and makes it trivial to add or conditionally omit a service by checking a boolean before adding the key.
+
+### Registry as Plain Files
+
+State lives in `~/.local/share/vivarium/<projectName>/`. No database, no daemon, no lock files. Any standard tool (`cat`, `jq`, a text editor) can read or modify the state. `listClaimed()` is just a directory scan with JSON parses.
+
+The tradeoff is that there is no transactional isolation between concurrent `vivarium` invocations. Sequential use is the expected workflow.
+
+### Zero Writes to the Consuming Project
+
+Vivarium does not modify your project directory except to write the package `.env` files you declare via `envFile`. The `compose.yaml`, `state.json`, and registry `.env` all live in `~/.local/share/vivarium/`. Your project's version control is not affected.
+
+### Two Runtime Dependencies
+
+The published package has two runtime dependencies: `commander` (CLI argument parsing) and `yaml` (YAML serialization). Everything else is either Node.js built-ins or TypeScript tooling in devDependencies.
+
+### Biome, No Unit Tests
+
+Linting and formatting use Biome. `pnpm test` runs `biome check` as a lint and format gate. There is no unit test framework. The integration surface is a running Docker daemon, which does not lend itself to fast unit tests. Correctness is validated by running the tool.
+
+## Container Images
+
+All images are pulled from Amazon ECR Public (`public.ecr.aws`). ECR Public has no anonymous pull rate limits, which avoids the Docker Hub throttling that disrupts automated setups.
+
+| Service | Image |
+|---------|-------|
+| postgres | `public.ecr.aws/docker/library/postgres:18-alpine` |
+| redis (valkey) | `public.ecr.aws/bitnami/valkey:8-alpine` |
+| s3 (rustfs) | `public.ecr.aws/n9g5z2x9/docker-mirror/rustfs:latest` |
+| postgres-mcp | `public.ecr.aws/n9g5z2x9/docker-mirror/postgres-mcp:latest` |
+
+Vivarium uses Valkey (the Redis fork) rather than Redis itself, and RustFS rather than MinIO, for licensing reasons. Both are protocol-compatible with their originals; no client-side changes are required.
+
+Health checks are configured for the three stateful services:
+
+| Service | Health check command |
+|---------|---------------------|
+| postgres | `pg_isready` |
+| valkey | `redis-cli ping` |
+| rustfs | `curl /health` |
+
+The postgres-mcp sidecar depends on the postgres health check passing (`condition: service_healthy`) before it starts. No other cross-service dependencies are configured.

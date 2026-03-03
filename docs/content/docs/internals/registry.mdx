@@ -1,0 +1,88 @@
+---
+title: Registry
+description: How Vivarium manages project state at ~/.local/share/vivarium/
+---
+
+## Location
+
+```
+~/.local/share/vivarium/
+└── <projectName>/
+    ├── state.json
+    ├── compose.yaml
+    └── .env
+```
+
+One directory per project, named after the project (derived from `package.json` `name`, or `path.basename` of the project root if no `package.json` exists). The registry root is `~/.local/share/vivarium/` on all platforms.
+
+<Callout type="info">
+Nothing is written to your project directory except package `.env` files (via `envFile` in config). The registry lives entirely in `~/.local/share/vivarium/`. Your project's own files are not touched beyond those env files.
+</Callout>
+
+## Files Per Project
+
+### state.json
+
+Persists the allocation and identity of a running project:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `index` | `number` | The assigned port index (0-99) |
+| `projectName` | `string` | Canonical project name |
+| `composeName` | `string` | Docker Compose project name used for `--project-name` |
+| `projectRoot` | `string` | Absolute path to the project directory at setup time |
+| `ports` | `Record<string, number>` | Resolved port map: all six service ports by name |
+
+Example:
+
+```json
+{
+  "index": 3,
+  "projectName": "myapp",
+  "composeName": "myapp",
+  "projectRoot": "/Users/dev/projects/myapp",
+  "ports": {
+    "postgres": 5436,
+    "redis": 6383,
+    "s3": 9040,
+    "s3Console": 9041,
+    "frontend": 4030,
+    "backend": 4031
+  }
+}
+```
+
+### compose.yaml
+
+The generated Docker Compose file for this project. Vivarium writes it here before running `docker compose up`. Docker Compose is invoked with `--project-directory` pointing at the registry directory, so it reads the compose file and `.env` from the same location.
+
+### .env
+
+Compose-level environment variables, used for port interpolation in the compose file. Port bindings in `compose.yaml` use `${POSTGRES_PORT}:5432` style references so the actual port values come from this file, not from hardcoded values in the YAML.
+
+## Atomic Writes
+
+`writeState` writes `state.json` atomically:
+
+1. Write content to a temp file in the same directory
+2. `fs.renameSync(tempPath, finalPath)`
+
+`renameSync` is atomic on POSIX systems when source and destination are on the same filesystem. This prevents a partial read of `state.json` if another process (or a second terminal running `vivarium`) reads the registry while a write is in progress.
+
+## listClaimed
+
+`listClaimed()` scans all subdirectories of the registry root and returns every readable `state.json` as a `ProjectState` object. Subdirectories that have no `state.json`, or whose `state.json` fails to parse, are silently skipped. This means a corrupted or manually-edited state file does not prevent other projects from working.
+
+`listClaimed` is used by `autoAssignIndex` to build the set of taken indices and occupied ports before assigning a new one.
+
+## Teardown
+
+`vivarium teardown` calls `removeProject(projectName)`, which calls `fs.rmSync` recursively on the project's registry directory. This removes `state.json`, `compose.yaml`, and `.env` in one operation.
+
+Docker containers are stopped and removed before `removeProject` is called, so teardown leaves neither running containers nor registry files behind.
+
+Legacy support: if the project directory contains a `.vivarium/` folder (from an older version of the tool), teardown migrates it to the registry and removes it from the project directory.
+
+## Key Invariant
+
+The `compose.yaml` and `.env` files in the registry are the authoritative source. `docker compose` is always invoked pointing at the registry directory. The project directory is read-only from Vivarium's perspective, except for writing the package `.env` files specified in `envFile` config entries.

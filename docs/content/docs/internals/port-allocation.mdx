@@ -1,0 +1,62 @@
+---
+title: Port Allocation
+description: How Vivarium assigns ports to projects
+---
+
+## The Index System
+
+Every project managed by Vivarium is assigned a unique integer index in the range 0-99. That single number is the seed for all port assignments. All six ports a project uses are computed deterministically from it with no external lookups, no negotiation, and no shared state beyond the registry files.
+
+The maximum supported concurrency is 100 simultaneous projects. If all 100 indices are in use, `vivarium setup` exits with an error.
+
+## Port Formula
+
+`computePorts(index)` in `src/ports.ts` is a pure function with no side effects:
+
+| Service | Formula | Example (index 0) | Example (index 3) |
+|---------|---------|-------------------|-------------------|
+| `postgres` | `5433 + index` | `5433` | `5436` |
+| `redis` | `6380 + index` | `6380` | `6383` |
+| `s3` | `9010 + (index * 10)` | `9010` | `9040` |
+| `s3Console` | `9011 + (index * 10)` | `9011` | `9041` |
+| `frontend` | `4000 + (index * 10)` | `4000` | `4030` |
+| `backend` | `4001 + (index * 10)` | `4001` | `4031` |
+
+## Why Different Strides
+
+Postgres and redis stride by 1. Each project has exactly one postgres process and one redis process, so a gap of 1 between adjacent indices is sufficient.
+
+S3, s3Console, frontend, and backend stride by 10. These services are grouped in a block of 10 consecutive ports per index slot. The stride is intentional headroom: future services can be added to the block without reshuffling existing assignments or creating collisions between adjacent projects.
+
+The postgres-mcp sidecar has no host port binding at all. It lives inside the Docker Compose network and is only reachable via `vivarium mcp-proxy`.
+
+## Collision Detection
+
+`autoAssignIndex` in `src/registry.ts` applies three checks in sequence for each candidate index before accepting it:
+
+1. **Registry check** - If a state file already exists for this project name, that index is reused immediately (idempotent re-runs of setup).
+2. **Cross-project port overlap** - All ports from all claimed projects are collected. Any candidate whose computed ports overlap with an existing project's ports is skipped.
+3. **Live port check** - `isPortInUse(port)` performs a platform-aware check on the host for each port in the candidate set.
+
+`isPortInUse` is implemented in `src/ports.ts`:
+- macOS: `lsof -iTCP:<port> -sTCP:LISTEN`
+- Linux / WSL: `ss -tlnH sport = :<port>`
+- Returns `false` on error rather than crashing
+
+The first index that passes all three checks is used. If none do, setup exits with a non-zero code.
+
+## The Soft-Claim
+
+`autoAssignIndex` returns an index but does **not** call `writeState`. The index is held in memory only.
+
+This is intentional. Writing state before Docker services are running would leave a phantom registry entry if something fails mid-setup. State is only persisted in step 10 of the setup flow, after `docker compose up` has reported healthy containers. Until that point the index is "soft-claimed": it won't be double-assigned in the current process, but it could theoretically be taken by a concurrent `vivarium setup` on the same machine in a race.
+
+In practice, sequential setup runs are the expected workflow. The soft-claim design keeps the registry consistent under failure without requiring locks or transactions.
+
+<Callout type="info">
+If `vivarium setup` fails after index assignment but before step 10, no state file is written. The next run of `vivarium setup` for the same project will re-run `autoAssignIndex` and may get the same or a different index depending on what else has started in the meantime.
+</Callout>
+
+## What Happens at 100 Projects
+
+If all 100 index slots are occupied (or blocked by live port conflicts), `autoAssignIndex` exits the process with code 1 and prints an error. There is no overflow, no wrapping, and no automatic teardown of another project. You must run `vivarium teardown` on an existing project first.
