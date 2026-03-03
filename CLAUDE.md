@@ -9,9 +9,10 @@ Local dev stack manager CLI. Two runtime dependencies (`commander`, `yaml`), ~50
 | `pnpm build`   | Compile TypeScript to `dist/` |
 | `pnpm dev`     | Watch mode compilation   |
 | `pnpm format`  | Biome lint + format with auto-fix (`--write --unsafe`) |
-| `pnpm test`    | Biome lint + format check (no writes) |
+| `pnpm test`    | Biome check + Vitest unit tests       |
+| `pnpm test:watch` | Vitest in watch mode               |
 
-No unit test framework is configured. `pnpm test` runs Biome as a lint/format gate.
+`pnpm test` runs Biome lint/format check followed by Vitest. Tests live in `src/**/*.test.ts`. Currently no tests exist, but the infrastructure is in place.
 
 ## Architecture
 
@@ -52,6 +53,22 @@ src/
 - JSDoc on all exported functions
 - `execFileSync` preferred over `execSync` (no shell injection risk)
 - Synchronous I/O throughout — no async, the CLI runs sequentially
+
+## Docs
+
+The `docs/` workspace is a Next.js site (fumadocs) serving the public documentation.
+
+| Command        | Run from | Purpose                      |
+|----------------|----------|------------------------------|
+| `pnpm dev`     | `docs/`  | Dev server at localhost:3000 |
+| `pnpm build`   | `docs/`  | Production build             |
+
+Content lives in `docs/content/docs/`:
+- `reference/` -- commands, configuration, environment vars
+- `guides/` -- custom env, MCP integration, multi-project
+- `internals/` -- architecture, port allocation, registry
+
+**Docs must be kept in sync with code changes.** Any change to CLI behavior, configuration schema, commands, or environment variable conventions must include corresponding updates to the relevant files under `docs/content/docs/`.
 
 ## Gotchas
 
