@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/black.css";
+@import "fumadocs-ui/css/preset.css";
+
+/* Shiki: transparent background so fd-card shows through, no double-padding */
+.shiki {
+  /* biome-ignore lint/complexity/noImportantStyles: needed to override shiki's inline background-color */
+  background: transparent !important;
+  /* biome-ignore lint/complexity/noImportantStyles: needed to override shiki's inline padding */
+  padding: 0 !important;
+  /* biome-ignore lint/complexity/noImportantStyles: needed to override shiki's inline margin */
+  margin: 0 !important;
+}
+
+/* Hero dot-grid background pattern */
+.hero-dot-grid {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-fd-border) 80%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* Staggered fade-up animation for hero elements */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease forwards;
+  opacity: 0;
+}
+
+.animate-fade-up-1 {
+  animation-delay: 0.05s;
+}
+.animate-fade-up-2 {
+  animation-delay: 0.15s;
+}
+.animate-fade-up-3 {
+  animation-delay: 0.25s;
+}
+.animate-fade-up-4 {
+  animation-delay: 0.35s;
+}
+
+/* Blinking cursor for hero headline */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1s step-start infinite;
+}
