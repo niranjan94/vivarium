@@ -12,7 +12,7 @@ export default function HomePage() {
           Stop fighting over ports.
         </h1>
         <p className="text-xl text-fd-muted-foreground max-w-2xl mb-10 leading-relaxed">
-          Vivarium assigns your dev stack. You don&apos;t configure it &mdash; you just run it.
+          Vivarium assigns your dev stack. You don&apos;t configure it. You just run it.
           Postgres, Valkey, and S3 spin up with zero port decisions on your part.
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
