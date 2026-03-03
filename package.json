@@ -1,6 +1,6 @@
 {
   "name": "vivarium-cli",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Local dev stack manager — auto-allocates ports, manages Docker Compose services, generates .env files",
   "type": "module",
   "bin": {
@@ -31,7 +31,7 @@
     "type": "git",
     "url": "git+https://github.com/niranjan94/vivarium.git"
   },
-  "homepage": "https://github.com/niranjan94/vivarium#readme",
+  "homepage": "https://vivarium.niranjan.io",
   "bugs": {
     "url": "https://github.com/niranjan94/vivarium/issues"
   },
