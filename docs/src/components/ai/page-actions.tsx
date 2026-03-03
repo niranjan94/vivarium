@@ -1,5 +1,11 @@
 "use client";
-import { useMemo, useState } from "react";
+import { buttonVariants } from "fumadocs-ui/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "fumadocs-ui/components/ui/popover";
+import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import {
   Check,
   ChevronDown,
@@ -7,14 +13,8 @@ import {
   ExternalLinkIcon,
   TextIcon,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
-import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
-import { buttonVariants } from "fumadocs-ui/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "fumadocs-ui/components/ui/popover";
 
 const cache = new Map<string, string>();
 
@@ -51,6 +51,7 @@ export function LLMCopyButton({
 
   return (
     <button
+      type="button"
       disabled={isLoading}
       className={cn(
         buttonVariants({

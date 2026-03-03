@@ -1,7 +1,7 @@
 import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
+import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import {Metadata} from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Vivarium - an opinionated dev stack',
-    default: 'Vivarium - an opinionated dev stack',
+    template: "%s | Vivarium - an opinionated dev stack",
+    default: "Vivarium - an opinionated dev stack",
   },
 };
 
