@@ -1,0 +1,176 @@
+---
+title: Commands
+description: Complete reference for all vivarium commands
+---
+
+All commands must be run from the project root directory. Vivarium resolves the project name from `package.json["name"]` in `process.cwd()`, falling back to the directory basename if no `package.json` is found.
+
+## `vivarium setup`
+
+```bash
+vivarium setup
+```
+
+Full first-time setup. Runs these steps in order:
+
+1. Check prerequisites (Docker must be on `PATH`)
+2. Load config and resolve project name
+3. Auto-assign a free index (0-99); if already assigned, reuse it
+4. Compute all ports from the index
+5. Generate `compose.yaml` and write to `~/.local/share/vivarium/<name>/compose.yaml`
+6. Generate compose `.env` and write to `~/.local/share/vivarium/<name>/.env`
+7. Run `docker compose pull` then `docker compose up -d --wait`
+8. Create S3 buckets (if configured) via the `aws` CLI with endpoint override
+9. Write package `.env` files (only for packages with `envFile` set)
+10. Write `state.json` to registry (index is persisted here)
+11. Run `postSetup` scripts for each package
+12. Update `.claude/launch.json` if it exists (patches `frontend` and `api` port entries)
+
+Prints a port summary on completion.
+
+**Idempotent.** If the project already has a claimed index in the registry, that index is reused. Re-running regenerates compose and env files and restarts services.
+
+<Callout type="info">
+`setup` is the first-time flow. For daily restarts after setup has run, use `vivarium start` instead. It is faster and does not regenerate files.
+</Callout>
+
+---
+
+## `vivarium teardown`
+
+```bash
+vivarium teardown
+```
+
+Full cleanup. Steps:
+
+1. Attempt to load config (nullable -- teardown continues even if `vivarium.json` was deleted)
+2. Run `docker compose down --remove-orphans --volumes` (removes containers AND volumes)
+3. Delete `~/.local/share/vivarium/<name>/` recursively
+4. Migrate legacy `.vivarium/` directory if present (from older versions)
+5. Remove each package `envFile` from the project directory
+
+If config is not found, Vivarium warns that package `.env` files may need manual cleanup.
+
+<Callout type="error">
+`teardown` passes `--volumes` to `docker compose down`. Your Postgres data, Redis state, and S3 objects are permanently deleted. There is no confirmation prompt.
+</Callout>
+
+<Callout type="info">
+To stop containers without losing data, use `vivarium stop` instead.
+</Callout>
+
+---
+
+## `vivarium start`
+
+```bash
+vivarium start
+```
+
+Minimal daily restart. Only:
+
+1. Checks that `compose.yaml` exists in the registry (fails with a hint if not)
+2. Runs `docker compose up -d --wait`
+
+Does NOT regenerate files, claim or change the index, pull images, run `postSetup`, or update anything. Requires a prior `vivarium setup`.
+
+**Use this every time you resume work** on a project that is already set up.
+
+---
+
+## `vivarium stop`
+
+```bash
+vivarium stop
+```
+
+Minimal shutdown. Only:
+
+1. Checks that `compose.yaml` exists in the registry
+2. Runs `docker compose down`
+
+Does NOT pass `--volumes`. Your Postgres data, Redis state, and S3 objects are preserved. The project index is NOT released.
+
+---
+
+## `vivarium status`
+
+```bash
+vivarium status
+```
+
+Reads `state.json` from the registry and shows:
+
+- Project name and assigned index
+- All port assignments in a table
+- Output of `docker compose ps --format table`
+
+If the project has not been set up, prints a hint to run `vivarium setup`.
+
+---
+
+## `vivarium compose`
+
+```bash
+vivarium compose [args...]
+```
+
+Pass-through to `docker compose`. Uses the registry's `compose.yaml` and `.env` automatically. Accepts any arguments that `docker compose` accepts.
+
+```bash
+# Tail logs for the backend container
+vivarium compose logs -f backend
+
+# Open a psql shell
+vivarium compose exec postgres psql -U app myapp
+
+# Rebuild a specific service
+vivarium compose up -d --build backend
+```
+
+<Callout type="info">
+You do not need to specify `-f` or `--env-file` flags. Vivarium resolves the correct files from the registry automatically.
+</Callout>
+
+---
+
+## `vivarium mcp-proxy`
+
+```bash
+vivarium mcp-proxy <service>
+```
+
+Bridges stdio to the SSE endpoint of a named service running inside the Docker network. The bridge runs via:
+
+```bash
+docker run --rm -i --network <composeName>_default \
+  ghcr.io/sparfenyuk/mcp-proxy:v0.11.0 \
+  http://<service>:8000/sse
+```
+
+The primary use case is exposing the `postgres-mcp` sidecar (which only listens on the Docker network, not on any host port) to MCP clients on the host:
+
+```bash
+vivarium mcp-proxy postgres-mcp
+```
+
+**Requirements:**
+- The named service must be running
+- The service must expose an SSE endpoint at port `8000` on the `/sse` path
+- Docker must be able to pull `ghcr.io/sparfenyuk/mcp-proxy:v0.11.0`
+
+To wire this into an MCP client, configure the client to run `vivarium mcp-proxy <service>` as a stdio command.
+
+---
+
+## Command Comparison
+
+| Command | Regenerates files | Starts containers | Stops containers | Deletes volumes | Persists index |
+|---------|-------------------|-------------------|-----------------|-----------------|----------------|
+| `setup` | Yes | Yes | No | No | Yes |
+| `start` | No | Yes | No | No | No |
+| `stop` | No | No | Yes | No | No |
+| `teardown` | No | No | Yes | Yes | No (removes it) |
+| `status` | No | No | No | No | No |
+| `compose` | No | Depends on args | Depends on args | Depends on args | No |

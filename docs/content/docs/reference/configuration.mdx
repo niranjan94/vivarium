@@ -1,0 +1,145 @@
+---
+title: Configuration
+description: vivarium.json schema reference
+---
+
+## Config File Location
+
+Vivarium reads config from one of two places, checked in this order:
+
+1. `vivarium.json` in the project root
+2. The `"vivarium"` key inside `package.json`
+
+If neither is found, the command fails. Validation only checks that `services` and `packages` are present objects.
+
+## Top-Level Schema
+
+```typescript
+interface VivariumConfig {
+  services: {
+    postgres?: {
+      user: string;
+      password: string;
+      database: string;
+    };
+    redis?: true;
+    s3?: {
+      accessKey: string;
+      secretKey: string;
+      buckets: string[];
+    };
+  };
+  packages: Record<string, PackageConfig>;
+}
+```
+
+## `services`
+
+All services are optional. Only include the ones your project needs.
+
+### `postgres`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user` | `string` | Yes | Database user |
+| `password` | `string` | Yes | Database password |
+| `database` | `string` | Yes | Database name |
+
+Vivarium runs a Postgres container and a `postgres-mcp` sidecar. The `backend` package receives a `DATABASE_URL` constructed from these values automatically.
+
+### `redis`
+
+Set to the boolean `true` to enable Redis. No additional fields.
+
+```json
+{
+  "services": {
+    "redis": true
+  }
+}
+```
+
+The `backend` package receives `REDIS_ENABLED=true` and `REDIS_URL` automatically.
+
+### `s3`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `accessKey` | `string` | Yes | S3 access key |
+| `secretKey` | `string` | Yes | S3 secret key |
+| `buckets` | `string[]` | Yes | Bucket names to create on setup |
+
+Vivarium runs a MinIO container. Buckets are created via the `aws` CLI during `vivarium setup`. The `backend` package receives `AWS_S3_*` vars. The first bucket becomes `AWS_S3_BUCKET_NAME`, the second (if present) becomes `AWS_S3_TEMP_BUCKET_NAME`.
+
+## `packages`
+
+`packages` is a `Record<string, PackageConfig>`. The key is the package name. Package names `backend` and `frontend` are conventional and receive automatically generated environment variables. All other package names only get what you explicitly specify in `env`.
+
+### `PackageConfig`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `envFile` | `string` | none | Path (relative to project root) where the package `.env` is written. If omitted, no file is written for this package. |
+| `env` | `Record<string, string>` | `{}` | Custom key-value pairs merged into the generated env. Applied last via `Object.assign` -- always overrides convention-generated vars. |
+| `postSetup` | `string[]` | `[]` | Shell commands run after services are healthy. Executed via `execSync` so shell syntax (pipes, `&&`) works. |
+| `framework` | `'nextjs' \| 'vite'` | `'nextjs'` | Controls the env var prefix for the `frontend` package. `nextjs` uses `NEXT_PUBLIC_`, `vite` uses `VITE_`. |
+| `directory` | `string` | package key name | Working directory for `postSetup` commands, relative to project root. Defaults to the package key (e.g., a package named `backend` defaults to `./backend`). |
+
+<Callout type="info">
+`env` overrides are applied last. If you set a key in `env` that Vivarium would also generate conventionally, your value wins.
+</Callout>
+
+<Callout type="warn">
+`postSetup` runs via `execSync`, not `execFileSync`. Shell features like pipes and `&&` work, but so does shell injection if you include user-supplied input. Keep these commands static.
+</Callout>
+
+## Complete Example
+
+```json
+{
+  "services": {
+    "postgres": {
+      "user": "app",
+      "password": "secret",
+      "database": "myapp"
+    },
+    "redis": true,
+    "s3": {
+      "accessKey": "minioadmin",
+      "secretKey": "minioadmin",
+      "buckets": ["assets", "temp"]
+    }
+  },
+  "packages": {
+    "backend": {
+      "envFile": "backend/.env",
+      "postSetup": [
+        "pnpm --filter backend db:migrate",
+        "pnpm --filter backend db:seed"
+      ],
+      "env": {
+        "LOG_LEVEL": "debug"
+      }
+    },
+    "frontend": {
+      "envFile": "frontend/.env",
+      "framework": "vite",
+      "env": {
+        "VITE_FEATURE_FLAG": "true"
+      }
+    },
+    "worker": {
+      "envFile": "worker/.env",
+      "directory": "worker",
+      "env": {
+        "QUEUE_CONCURRENCY": "5"
+      }
+    }
+  }
+}
+```
+
+In this example:
+- `backend` gets convention-generated `DATABASE_URL`, `REDIS_URL`, `AWS_S3_*` vars, plus a custom `LOG_LEVEL`
+- `frontend` gets `VITE_` prefixed vars because `framework` is `vite`, plus a custom `VITE_FEATURE_FLAG`
+- `worker` is not a conventional name, so it only gets the `QUEUE_CONCURRENCY` key from `env`
