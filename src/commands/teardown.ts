@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { VivariumConfig } from '../config.js';
 import { loadConfig, loadProjectName } from '../config.js';
 import { findExistingClaim, projectDir, removeProject } from '../registry.js';
-import { dockerCompose } from '../utils/docker.js';
+import { docker, dockerCompose } from '../utils/docker.js';
 import { log } from '../utils/logger.js';
 
 /**
@@ -24,6 +24,20 @@ export function teardown(projectRoot: string) {
   const artifactDir = projectDir(projectName);
   const composePath = path.join(artifactDir, 'compose.yaml');
   const envPath = path.join(artifactDir, '.env');
+
+  // Remove any leftover MCP proxy containers for this project
+  try {
+    const ids = docker(
+      ['ps', '-aq', '--filter', `label=vivarium.project=${projectName}`],
+      { stdio: 'pipe' },
+    ).trim();
+    if (ids) {
+      log.step('Removing vivarium containers');
+      docker(['rm', '-f', ...ids.split('\n')], { stdio: 'pipe' });
+    }
+  } catch {
+    log.warn('Failed to remove some vivarium containers');
+  }
 
   // Stop compose services
   if (fs.existsSync(composePath) && fs.existsSync(envPath)) {
