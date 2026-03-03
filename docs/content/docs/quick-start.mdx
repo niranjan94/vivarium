@@ -1,0 +1,130 @@
+---
+title: Quick Start
+description: Get your dev stack running in under a minute
+---
+
+## Prerequisites
+
+- **Docker** - must be installed and running
+- **Node.js** >= 20
+
+## Installation
+
+```bash
+npm install -g vivarium-cli
+```
+
+If you prefer not to install globally, every command works with `npx`:
+
+```bash
+npx vivarium-cli <command>
+```
+
+## Step 1: Create vivarium.json
+
+Add a `vivarium.json` file to your project root:
+
+```json
+{
+  "services": {
+    "postgres": {
+      "user": "app",
+      "password": "secret",
+      "database": "myapp"
+    }
+  },
+  "packages": {
+    "backend": {
+      "envFile": "backend/.env"
+    },
+    "frontend": {
+      "envFile": "frontend/.env",
+      "framework": "vite"
+    }
+  }
+}
+```
+
+This config enables Postgres, declares two packages, and tells Vivarium where to write each package's `.env` file. Redis and S3 are opt-in via additional keys in `services`.
+
+The package names `backend` and `frontend` are conventional. A package named `backend` receives `DATABASE_URL`, `REDIS_URL`, and `AWS_S3_*` vars automatically. A package named `frontend` receives `VITE_API_URL` (when `framework` is `vite`) or `NEXT_PUBLIC_API_URL` (when `framework` is `next`).
+
+## Step 2: Run Setup
+
+```bash
+vivarium setup
+```
+
+Setup runs once when you first configure a project. It:
+
+1. Checks that Docker is available
+2. Assigns your project an index (0-99) based on what's not already taken
+3. Computes all ports from that index
+4. Generates `compose.yaml` and `.env` in `~/.local/share/vivarium/<name>/`
+5. Pulls Docker images and starts containers (`docker compose up -d --wait`)
+6. Creates S3 buckets if configured
+7. Writes `.env` files to your package directories
+8. Persists the index to `state.json`
+9. Runs any `postSetup` commands from your config
+
+Setup is idempotent. If the project already has an index, re-running reuses it and regenerates the config files.
+
+## Step 3: Verify
+
+```bash
+vivarium status
+```
+
+This shows your project's assigned index, the ports in use, and the status of each container.
+
+## Daily Workflow
+
+Once setup is complete, use `start` and `stop` for daily use:
+
+```bash
+# Bring containers up
+vivarium start
+
+# Bring containers down (data is preserved)
+vivarium stop
+
+# Check what's running
+vivarium status
+```
+
+`start` only runs `docker compose up -d --wait`. It does not regenerate files, re-pull images, or run `postSetup` commands. Use it every time you resume work.
+
+`stop` runs `docker compose down` without `--volumes`. Your Postgres data, Redis state, and S3 objects survive.
+
+## Cleanup
+
+```bash
+vivarium teardown
+```
+
+Teardown removes containers, volumes, the registry directory, and the package `.env` files Vivarium wrote. Use this when you're done with the project and want to reclaim disk space and the port index.
+
+<Callout type="warn">
+Teardown deletes volumes. Your database data, Redis state, and S3 objects are gone. There is no prompt.
+</Callout>
+
+## What Gets Written
+
+Vivarium writes files to two locations:
+
+**Registry** (`~/.local/share/vivarium/<name>/`):
+
+| File | Contents |
+|------|----------|
+| `compose.yaml` | Generated Docker Compose file |
+| `.env` | Env vars for Compose interpolation |
+| `state.json` | Assigned index and port map |
+
+**Your project directories** (wherever `envFile` points in each package config):
+
+| File | Contents |
+|------|----------|
+| `backend/.env` | `DATABASE_URL`, `REDIS_URL`, `AWS_S3_*`, etc. |
+| `frontend/.env` | Framework-specific vars like `VITE_API_URL` |
+
+Vivarium does not write anything else into your project. No config files, no lockfiles, no hidden directories.

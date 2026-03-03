@@ -1,0 +1,49 @@
+---
+title: Introduction
+description: Zero-config port management for local dev stacks
+---
+
+Vivarium is a local dev stack manager that is deliberately opinionated. It runs Postgres, Redis, and S3 locally for each of your projects, assigns ports automatically, and generates Docker Compose files and `.env` files from your config. You don't configure ports. You don't pick container images. You name your packages and the env vars appear.
+
+## The Problem
+
+Run two projects locally, each needing Postgres on 5432. You get a port collision. You either remember to change one project's port, run into it again after a reboot, or write a docker-compose.override.yml that you'll forget about in six months.
+
+Scale that to five projects, each needing Postgres, Redis, and S3. Now you're managing fifteen port numbers in your head and across a dozen `.env` files. Vivarium eliminates this entirely.
+
+## The Philosophy
+
+Vivarium assigns your ports. It picks your services. It names your env vars. It makes every decision that doesn't need to be yours.
+
+- **Ports are assigned, not configured.** Each project gets an index (0-99). Every port is derived from that index arithmetically. You never type a port number.
+- **Services are fixed.** Postgres (postgres:18-alpine), Redis (Valkey), S3 (RustFS). If you need a different image, Vivarium is not the right tool.
+- **Env vars by convention.** Name a package `backend` and you get `DATABASE_URL`, `REDIS_URL`, `AWS_S3_*` automatically. No schema to memorize.
+- **Two runtime dependencies.** `commander` and `yaml`. That's the entire dependency surface.
+- **No async.** Synchronous I/O throughout. The CLI runs sequentially, top to bottom.
+
+The tradeoff is explicit: you cannot choose port numbers, container images, or env var names. That is not a limitation to work around. It is the point.
+
+## What You Get
+
+- **Deterministic port allocation** across all local projects, with collision detection
+- **Docker Compose generation** written to `~/.local/share/vivarium/<name>/compose.yaml`
+- **`.env` generation** for the Compose file and for each package in your project
+- **MCP sidecar** for AI tooling that needs to reach your services
+- **Idempotent setup** - re-running `vivarium setup` reuses the existing index and regenerates files
+
+## What You Don't Get
+
+- The ability to choose which port Postgres runs on
+- Custom container images
+- Custom env var names for `DATABASE_URL` or `REDIS_URL`
+- A plugin system
+
+If you need any of those, plain Docker Compose gives you complete control. Vivarium trades that flexibility for zero cognitive overhead.
+
+## Next Steps
+
+<Cards>
+  <Card title="Quick Start" href="/docs/quick-start" description="Install Vivarium and get your first stack running" />
+  <Card title="Configuration Reference" href="/docs/reference/configuration" description="All vivarium.json fields documented" />
+  <Card title="Commands Reference" href="/docs/reference/commands" description="Every CLI command and its flags" />
+</Cards>
